@@ -1,0 +1,328 @@
+  
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Whack-a-Mole Game</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #d9f99d, #86efac);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .game-container {
+      width: 100%;
+      max-width: 540px;
+      background: #fff;
+      padding: 25px;
+      border-radius: 24px;
+      box-shadow: 0 15px 40px #14532d30;
+      text-align: center;
+    }
+
+    .game-title {
+      color: #166534;
+      font-weight: 800;
+    }
+
+    .score-box {
+      background: #f0fdf4;
+      border: 2px solid #bbf7d0;
+      border-radius: 14px;
+      padding: 12px 5px;
+    }
+
+    .score-number {
+      font-size: 28px;
+      font-weight: bold;
+      color: #15803d;
+    }
+
+    .game-board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 25px 0;
+    }
+
+    .hole {
+      aspect-ratio: 1;
+      border: none;
+      border-radius: 50%;
+      background: #854d27;
+      box-shadow: inset 0 8px 0 #633719,
+                  0 5px 0 #b8d98c;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      cursor: pointer;
+      font-size: clamp(35px, 9vw, 58px);
+      transition: transform 0.12s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .hole:active {
+      transform: scale(0.94);
+    }
+
+    .hole.active {
+      background: #a16207;
+    }
+
+    .mole {
+      animation: popUp 0.18s ease-out;
+      user-select: none;
+      line-height: 1;
+    }
+
+    @keyframes popUp {
+      from {
+        transform: translateY(35px) scale(0.6);
+      }
+      to {
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .game-message {
+      min-height: 28px;
+      font-weight: bold;
+      color: #475569;
+    }
+
+    .start-btn {
+      background: #16a34a;
+      border: none;
+      color: white;
+      font-weight: bold;
+      padding: 12px;
+      border-radius: 12px;
+    }
+
+    .start-btn:hover {
+      background: #15803d;
+      color: white;
+    }
+
+    .start-btn:disabled {
+      background: #86b99a;
+      color: white;
+    }
+
+    @media (max-width: 400px) {
+      .game-container {
+        padding: 17px;
+      }
+
+      .game-board {
+        gap: 9px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="game-container">
+
+    <h1 class="game-title">🔨 Whack-a-Mole</h1>
+    <p class="text-secondary">
+      Mole ko pakdo aur maximum score banao!
+    </p>
+
+    <!-- Score and Timer -->
+    <div class="row g-3">
+      <div class="col-6">
+        <div class="score-box">
+          <div>🏆 Score</div>
+          <div class="score-number" id="score">0</div>
+        </div>
+      </div>
+
+      <div class="col-6">
+        <div class="score-box">
+          <div>⏱️ Time Left</div>
+          <div class="score-number">
+            <span id="timer">30</span>s
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Board -->
+    <div class="game-board" id="gameBoard">
+      <button class="hole" data-index="0" aria-label="Hole 1"></button>
+      <button class="hole" data-index="1" aria-label="Hole 2"></button>
+      <button class="hole" data-index="2" aria-label="Hole 3"></button>
+      <button class="hole" data-index="3" aria-label="Hole 4"></button>
+      <button class="hole" data-index="4" aria-label="Hole 5"></button>
+      <button class="hole" data-index="5" aria-label="Hole 6"></button>
+      <button class="hole" data-index="6" aria-label="Hole 7"></button>
+      <button class="hole" data-index="7" aria-label="Hole 8"></button>
+      <button class="hole" data-index="8" aria-label="Hole 9"></button>
+    </div>
+
+    <p class="game-message" id="message" aria-live="polite">
+      Start dabao aur game khelo!
+    </p>
+
+    <button class="btn start-btn w-100" id="startBtn">
+      ▶ Start Game
+    </button>
+
+    <p class="small text-secondary mt-3 mb-0">
+      Tip: Mole dikhte hi us par click karo! 🐹
+    </p>
+
+  </main>
+
+  <script>
+    // Game variables
+    const holes = document.querySelectorAll(".hole");
+    const scoreDisplay = document.getElementById("score");
+    const timerDisplay = document.getElementById("timer");
+    const message = document.getElementById("message");
+    const startBtn = document.getElementById("startBtn");
+
+    let score = 0;
+    let timeLeft = 30;
+    let activeHole = -1;
+    let gameRunning = false;
+    let timerInterval = null;
+    let moleTimeout = null;
+
+    // Random hole select karo
+    function showMole() {
+      if (!gameRunning) return;
+
+      // Purane mole ko hatao
+      holes.forEach(hole => {
+        hole.innerHTML = "";
+        hole.classList.remove("active");
+      });
+
+      // Naya random hole choose karo
+      let newHole;
+
+      do {
+        newHole = Math.floor(Math.random() * holes.length);
+      } while (holes.length > 1 && newHole === activeHole);
+
+      activeHole = newHole;
+
+      holes[activeHole].innerHTML =
+        '<span class="mole" aria-hidden="true">🐹</span>';
+
+      holes[activeHole].classList.add("active");
+
+      // Mole ko thodi der baad move karo
+      moleTimeout = setTimeout(showMole, 700);
+    }
+
+    // Game start karo
+    function startGame() {
+      clearInterval(timerInterval);
+      clearTimeout(moleTimeout);
+
+      score = 0;
+      timeLeft = 30;
+      activeHole = -1;
+      gameRunning = true;
+
+      scoreDisplay.textContent = score;
+      timerDisplay.textContent = timeLeft;
+      message.textContent = "Jaldi click karo! 🎯";
+      message.style.color = "#15803d";
+
+      startBtn.textContent = "🎮 Game Running...";
+      startBtn.disabled = true;
+
+      holes.forEach(hole => {
+        hole.innerHTML = "";
+        hole.classList.remove("active");
+      });
+
+      showMole();
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = timeLeft;
+
+        if (timeLeft <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+
+    // Mole par click karne par
+    holes.forEach((hole, index) => {
+      hole.addEventListener("click", () => {
+        if (!gameRunning) return;
+
+        if (index === activeHole) {
+          score++;
+          scoreDisplay.textContent = score;
+
+          // Same mole par multiple clicks na ho
+          activeHole = -1;
+
+          clearTimeout(moleTimeout);
+
+          holes.forEach(item => {
+            item.innerHTML = "";
+            item.classList.remove("active");
+          });
+
+          message.textContent = "Great! +1 point 🎉";
+          showMole();
+        }
+      });
+    });
+
+    // Game khatam karo
+    function endGame() {
+      gameRunning = false;
+
+      clearInterval(timerInterval);
+      clearTimeout(moleTimeout);
+
+      holes.forEach(hole => {
+        hole.innerHTML = "";
+        hole.classList.remove("active");
+      });
+
+      activeHole = -1;
+      timerDisplay.textContent = 0;
+
+      message.textContent =
+        `🏁 Game Over! Tumhara final score: ${score}`;
+
+      message.style.color = "#166534";
+      startBtn.textContent = "🔄 Play Again";
+      startBtn.disabled = false;
+    }
+
+    // Start aur restart dono isi button se
+    startBtn.addEventListener("click", startGame);
+  </script>
+
+</body>
+</html>
